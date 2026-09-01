@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AuraScript Architecture Diagram</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px;
+        }
+        h2 { margin-bottom: 20px; color: #333; }
+        .mermaid {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+    </style>
+</head>
+<body>
+
+    <h2>AuraScript Architecture Diagram</h2>
+    <p style="color: #666; margin-bottom: 30px;"><i>Right-click the diagram below and select "Save image as..." to download the PNG.</i></p>
+
+    <div class="mermaid">
+graph TD
+    subgraph Client ["Browser Client (Next.js React)"]
+        UI["User Interface"]
+        Editor["TipTap Screenplay Editor"]
+        Yjs["Yjs CRDT State & IndexedDB"]
+        Agent["MCP Command Interceptor"]
+        
+        UI <--> Editor
+        Editor <--> Yjs
+        UI --> Agent
+    end
+
+    subgraph APITier ["Next.js Server API"]
+        GroqRoute["/api/groq/"]
+        InviteRoute["/api/invite/"]
+    end
+
+    subgraph External ["External APIs & Services"]
+        GroqLLM["Groq LPU LLM"]
+        SMTP["Gmail SMTP Server"]
+        Pollinations["Pollinations Image API"]
+    end
+
+    Editor -- "Live Text Context" --> GroqRoute
+    Agent -- "Chat Prompt" --> GroqRoute
+    
+    GroqRoute -- "Dynamic Discovery & Prompt" --> GroqLLM
+    GroqLLM -- "Markdown + JSON Action" --> GroqRoute
+    GroqRoute --> Agent
+    
+    Agent -- "Parses JSON & Updates State" --> Editor
+    
+    UI -- "Generate Keyframe" --> Pollinations
+    UI -- "Invite Collaborator" --> InviteRoute
+    InviteRoute -- "nodemailer payload" --> SMTP
+    </div>
+
+    <script type="module">
+        import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.esm.min.mjs';
+        mermaid.initialize({ startOnLoad: true, theme: 'default' });
+    </script>
+</body>
+</html>

@@ -1,0 +1,54 @@
+================================================================================
+                    AURASCRIPT PLATFORM ARCHITECTURE
+================================================================================
+
+                           ┌────────────────────────┐
+                           │      USER BROWSER      │
+                           │  (Next.js React App)   │
+                           └───────────┬────────────┘
+                                       │
+      ┌────────────────────────────────┼────────────────────────────────┐
+      │                                │                                │
+┌─────▼─────┐                   ┌──────▼──────┐                   ┌─────▼─────┐
+│   TIPTAP  │◄──(Live Sync)────►│  YJS CRDT   │                   │  AI PANEL │
+│   EDITOR  │                   │ STATE STORE │                   │   (UI)    │
+└─────┬─────┘                   └──────┬──────┘                   └─────┬─────┘
+      │                                │                                │
+      │                         ┌──────▼──────┐                         │
+      │                         │  INDEXED DB │                         │
+      │                         │ (Local Save)│                         │
+      │                         └─────────────┘                         │
+      │                                                                 │
+      │                          [ MCP COMMAND ]                        │
+      └───────────────────────◄──[ INTERCEPTOR ]◄───────────────────────┘
+                                       ▲
+                                       │ (JSON Action / RAG Context)
+=======================================│========================================
+                                       │
+                           ┌───────────▼────────────┐
+                           │   NEXT.JS API SERVER   │
+                           └───────────┬────────────┘
+                                       │
+      ┌────────────────────────────────┼────────────────────────────────┐
+      │                                │                                │
+┌─────▼─────┐                   ┌──────▼──────┐                   ┌─────▼─────┐
+│ /api/groq │                   │ /api/invite │                   │ /api/tmdb │
+│ (LLM RAG) │                   │(NodeMailer) │                   │(Metadata) │
+└─────┬─────┘                   └──────┬──────┘                   └─────┬─────┘
+      │                                │                                │
+======│================================│================================│=======
+      │                                │                                │
+┌─────▼─────┐                   ┌──────▼──────┐                   ┌─────▼─────┐
+│ GROQ LPU  │                   │ GMAIL SMTP  │                   │ TMDB API  │
+│ (Llama 3) │                   │   SERVER    │                   │ Database  │
+└───────────┘                   └─────────────┘                   └───────────┘
+
+--------------------------------------------------------------------------------
+SYSTEM FLOW SUMMARY:
+1. The User writes in the TipTap Editor, which syncs locally to IndexedDB via Yjs.
+2. The user highlights text and asks the AI Studio a question.
+3. The AI Panel sends the question + the live editor text to the /api/groq server.
+4. The server queries the Groq LPU LLM.
+5. If the AI decides to modify the workspace, it returns a JSON MCP Command.
+6. The MCP Command Interceptor parses the JSON and directly updates the Editor!
+================================================================================

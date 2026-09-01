@@ -1,0 +1,165 @@
+=========================================================
+AURASCRIPT CAPSTONE PROJECT - FINAL DOCUMENTATION SUITE
+=========================================================
+
+This document contains all the necessary sections for your Capstone Project report, including the Architecture Design, Test Cases, Research References, and a Step-by-Step Guide for setting up your GitHub Repository, CI/CD Pipeline, and Docker.
+
+---------------------------------------------------------
+PART 1: STEP-BY-STEP GITHUB, CI/CD, & DOCKER GUIDE
+---------------------------------------------------------
+
+Since you don't have a GitHub repository yet, follow these exact steps to set everything up from scratch on your Windows machine:
+
+STEP A: Create the GitHub Repository
+1. Go to https://github.com and log into your account.
+2. Click the "+" icon in the top right corner and select "New repository".
+3. Name the repository "aurascript-capstone" (or whatever you prefer).
+4. Leave it as "Public" or "Private" (your choice).
+5. DO NOT check "Add a README file" or ".gitignore". Leave the repo completely empty.
+6. Click "Create repository".
+
+STEP B: Push Your Code to GitHub (Triggers CI/CD)
+1. Open your terminal in the `C:\SE SCREENPLAY` directory.
+2. Run the following commands one by one to push your code:
+   
+   git init
+   git add .
+   git commit -m "Initial Capstone Commit"
+   git branch -M main
+   git remote add origin <PASTE_YOUR_GITHUB_REPO_URL_HERE>
+   git push -u origin main
+
+3. Once you press Enter on the last command, your code will be uploaded to GitHub.
+4. Because we created the `.github/workflows/ci.yml` file, GitHub will IMMEDIATELY start running your CI/CD Pipeline in the cloud! You can watch it by clicking the "Actions" tab on your GitHub repository page.
+
+STEP C: Run Docker Locally
+To run the production version of your app inside a Docker container on your own machine:
+1. Make sure "Docker Desktop" is installed and running on your Windows PC.
+2. Open your terminal in `C:\SE SCREENPLAY`.
+3. Run this command:
+   
+   docker-compose up -d --build
+
+4. Docker will build the optimized Next.js image and start the container.
+5. You can now access your production app at http://localhost:3000!
+
+
+---------------------------------------------------------
+PART 2: ARCHITECTURE DESIGN
+---------------------------------------------------------
+
+High-Level Architecture and Data Flow
+
+1. Frontend Client (Next.js & React)
+   - ProseMirror / TipTap Engine: Powers the core collaborative text editor, enforcing standard screenplay formatting (Scene Headings, Action, Dialogue).
+   - Yjs CRDT Store: Manages the local operational transformations for the document, currently synced via IndexedDB for offline persistence.
+   - AI Panel Interface: A glassmorphism-styled drawer handling RAG Chat, dynamic Concept Art (Pollinations AI), and Web Speech API dictation.
+
+2. Backend Services (Next.js API Routes)
+   - /api/groq: Server-side proxy for the Groq LLM API. Implements dynamic model discovery (polling available models) to prevent 404 deprecation errors, and injects context for RAG operations.
+   - /api/tmdb: Connects to The Movie Database API to augment the LLM's knowledge with real-time cinema metadata.
+   - /api/invite: NodeMailer SMTP server endpoint handling collaborative invitations.
+
+3. Model Context Protocol (MCP) Agent Flow
+   - The AI acts as an autonomous agent. When requested to perform a workspace action (e.g., "Create a character profile"), the Groq LLM outputs a structured JSON payload [[MCP_COMMAND: {action: "create_file"}]]. The frontend intercepts this payload, parses the JSON, and executes the state mutation directly on the client.
+
+```mermaid
+graph TD
+    subgraph Client ["Browser Client (Next.js React)"]
+        UI["User Interface"]
+        Editor["TipTap Screenplay Editor"]
+        Yjs["Yjs CRDT State & IndexedDB"]
+        Agent["MCP Command Interceptor"]
+        
+        UI <--> Editor
+        Editor <--> Yjs
+        UI --> Agent
+    end
+
+    subgraph APITier ["Next.js Server API"]
+        GroqRoute["/api/groq/"]
+        InviteRoute["/api/invite/"]
+    end
+
+    subgraph External ["External APIs & Services"]
+        GroqLLM["Groq LPU LLM"]
+        SMTP["Gmail SMTP Server"]
+        Pollinations["Pollinations Image API"]
+    end
+
+    Editor -- "Live Text Context" --> GroqRoute
+    Agent -- "Chat Prompt" --> GroqRoute
+    
+    GroqRoute -- "Dynamic Discovery & Prompt" --> GroqLLM
+    GroqLLM -- "Markdown + JSON Action" --> GroqRoute
+    GroqRoute --> Agent
+    
+    Agent -- "Parses JSON & Updates State" --> Editor
+    
+    UI -- "Generate Keyframe" --> Pollinations
+    UI -- "Invite Collaborator" --> InviteRoute
+    InviteRoute -- "nodemailer payload" --> SMTP
+```
+
+
+---------------------------------------------------------
+PART 3: STANDARDIZED UI/UX TEST CASES
+---------------------------------------------------------
+
+| Test ID | Module   | Scenario / Action | Expected Result | Pass/Fail |
+|---------|----------|-------------------|-----------------|-----------|
+| TC-01   | Editor   | Type "INT. KITCHEN - DAY" and press Enter. | Text is automatically formatted as a Scene Heading block (all caps). | [ ] |
+| TC-02   | Editor   | Switch browser to Dark Mode or use Dark Reader extension. | Editor paper remains pure #ffffff white with #000000 text to preserve the physical script aesthetic. | [ ] |
+| TC-03   | RAG AI   | Select a block of dialogue and click "Insert Dialogue". | The Groq API analyzes the highlighted context and appends a contextually relevant dialogue string into the editor. | [ ] |
+| TC-04   | Agent    | Type "save a snapshot of this script" into the RAG Chat. | The AI returns a JSON MCP command `save_version`, which the frontend intercepts to generate a new entry in the Version History drawer. | [ ] |
+| TC-05   | Auth     | Open Collaborators drawer, type email, and click Add. | The backend triggers the NodeMailer SMTP protocol and the user receives a formatted HTML invitation in their inbox. | [ ] |
+| TC-06   | Media    | Click "Visualize Current Scene" in AI Studio. | The Pollinations AI API generates a 16:9 photorealistic concept art image based on the current scene heading text. | [ ] |
+
+
+---------------------------------------------------------
+PART 4: AUTOMATED cURL ENDPOINT TESTING
+---------------------------------------------------------
+
+You can copy and paste these commands into your Windows Command Prompt (cmd.exe) to test the backend infrastructure. Ensure your Next.js server is running (npm run dev) before executing.
+
+Test A: Groq RAG Agent (/api/groq)
+Verifies that the LLM is connected, discovering models, and responding to system prompts.
+
+curl -X POST http://localhost:3000/api/groq ^
+  -H "Content-Type: application/json" ^
+  -d "{\"messages\":[{\"role\":\"user\",\"content\":\"Explain the core theme of Blade Runner in one sentence.\"}]}"
+
+
+Test B: SMTP Email Invite Route (/api/invite)
+Verifies the NodeMailer configuration and environment variables.
+
+curl -X POST http://localhost:3000/api/invite ^
+  -H "Content-Type: application/json" ^
+  -d "{\"email\":\"test@example.com\", \"role\":\"Editor\"}"
+
+
+---------------------------------------------------------
+PART 5: ACADEMIC RESEARCH REFERENCES (2023-2025)
+---------------------------------------------------------
+
+The following references justify the technological choices and problem statement of the AuraScript platform. 
+
+1. Large Language Models in Creative Writing
+Franceschelli, G., & Musolesi, M. (2024). On the creativity of large language models. AI & SOCIETY, 39, 1-14. 
+DOI: 10.1007/s00146-024-02127-3
+Relevance: Establishes benchmarks for AI creativity, supporting AuraScript's decision to keep the human writer in control while using AI strictly for localized generation.
+
+2. Human-AI Collaborative Interfaces
+Gero, K. I., et al. (2024). Creative Writers' Attitudes on Writing as Training Data for Large Language Models. arXiv preprint arXiv:2409.14281.
+DOI: 10.48550/arXiv.2409.14281
+Relevance: Highlights writers' concerns regarding control and data privacy. AuraScript mitigates these by processing data in local IndexedDB stores and utilizing ephemeral API calls.
+
+3. Agentic Workflows & Model Context Protocols (MCP)
+Wang, L., et al. (2023). A Survey on Large Language Model based Autonomous Agents. Frontiers of Computer Science.
+DOI: 10.1007/s11704-024-40231-1
+Relevance: Provides the academic foundation for AuraScript's JSON-based command interception system by outlining the transition of LLMs to autonomous agents capable of tool use.
+
+4. Evaluation of RAG in Creative Contexts
+Kim, S., & Oh, H. (2025). Evaluating Creativity: Can LLMs Be Good Evaluators in Creative Writing Tasks? Applied Sciences, 15(6).
+DOI: 10.3390/app15062971
+Relevance: Analyzes how effectively an LLM can parse creative context. It validates feeding live script context into the system prompt to maintain narrative coherence.
